@@ -1,0 +1,14 @@
+Insert Into COUNTRY Values(1,'India');
+Insert Into COUNTRY Values(2,'Usa');
+Insert Into STATE Values(1,1,'Andhra Pradesh');
+Insert Into STATE Values(2,1,'Karnataka');
+Insert Into STATE Values(3,2,'New Jersy');
+insert into STATE values(4,2,'Ohio');
+Insert Into CITY Values(1,'Vizag',1);
+Insert Into CITY Values(2,'Guntur',1);
+Insert Into CITY Values(3,'Banglore',2);
+Insert Into CITY Values(4,'Mysore',2);
+Insert Into CITY Values(5,'Maywood',3);
+Insert Into CITY Values(6,'Westwood',3);
+Insert Into CITY Values(7,'Oakwood',4);
+Insert Into CITY Values(8,'Cuyahoga County',4);

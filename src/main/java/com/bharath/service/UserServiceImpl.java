@@ -1,5 +1,8 @@
 package com.bharath.service;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,11 +35,14 @@ public class UserServiceImpl implements IUserService {
 	@Autowired
 	private CityRepository cityRepo;
 
+	@Autowired
+	private IEmailService emailService;
+
 	@Override
 	public Map<Integer, String> findCountries() {
 		List<Country> countriesList = countryRepo.findAll();
 		Map<Integer, String> countries = new HashMap<>();
-		
+
 		countriesList.forEach(country -> {
 			countries.put(country.getCountryId(), country.getCountryName());
 		});
@@ -66,7 +72,10 @@ public class UserServiceImpl implements IUserService {
 	@Override
 	public boolean isEmailUnique(String emailId) {
 		User userDetails = userRepo.findByEmailId(emailId);
-		return userDetails.getUserId() == null;
+		if (userDetails == null) {
+			return true;
+		}
+		return false;
 	}
 
 	@Override
@@ -74,18 +83,23 @@ public class UserServiceImpl implements IUserService {
 		user.setPassword(passwordGenerator());
 		user.setAccountStatus("LOCKED");
 		User userObj = userRepo.save(user);
-		return userObj.getUserId() != null;
+
+		String emailBody = getUnlockAccEmailBody(user);
+		String subject = "UNLOCK Your Account | IES ";
+
+		boolean isSent = emailService.sendAccountUnlockEmail(subject, emailBody, user.getEmailId());
+
+		return userObj.getUserId() != null && isSent;
 	}
 
 	private String passwordGenerator() {
-		char[] password = new char[5];
-		String alphaNumeric = "ABCDEFGHabcdefgh1234567890";
+		String randomPassword = "";
+		String alphaNumeric = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890";
 		Random randomPwd = new Random();
-		for (int i = 0; i < 5; i++) {
-			password[i] = alphaNumeric.charAt(randomPwd.nextInt(alphaNumeric.length()));
+		for (int i = 0; i < 8; i++) {
+			randomPassword = randomPassword + alphaNumeric.charAt(randomPwd.nextInt(alphaNumeric.length()));
 		}
-		System.out.println(password.toString());
-		return password.toString();
+		return randomPassword;
 	}
 
 	// test case-1 : invalid email & pwd ==> INVALID_CREDENTIALs
@@ -104,8 +118,8 @@ public class UserServiceImpl implements IUserService {
 		return "INVALID_CREDENTIALS";
 	}
 
-	//test case 1: User has given invalid temp-pwd ==> false
-	//test case 2 : User has given valid temp-pwd ==> true
+	// test case 1: User has given invalid temp-pwd ==> false
+	// test case 2 : User has given valid temp-pwd ==> true
 	@Override
 	public boolean isTempPwdValid(String email, String tempPwd) {
 		User userDetails = userRepo.findByEmailIdAndPassword(email, tempPwd);
@@ -126,14 +140,54 @@ public class UserServiceImpl implements IUserService {
 		}
 	}
 
-	//test case : 1 => User entered valid email -> return existing pwd
-	//test case : 2 => User entered invalid email -> return null
+	// test case : 1 => User entered valid email -> return existing pwd
+	// test case : 2 => User entered invalid email -> return null
 	@Override
 	public String forgotPassword(String email) {
 		User userDetails = userRepo.findByEmailId(email);
-		if(userDetails!=null) {
+		if (userDetails != null) {
 			return userDetails.getPassword();
 		}
 		return null;
 	}
+
+	private String getUnlockAccEmailBody(User user) {
+
+		StringBuffer sb = new StringBuffer("");
+
+		try {
+
+			File f = new File("unlock-acc-email-body.txt");
+
+			FileReader fr = new FileReader(f);
+
+			BufferedReader br = new BufferedReader(fr);
+
+			String line = br.readLine();
+
+			while (line != null) {
+				if (line.contains("{FNAME}")) {
+					line = line.replace("{FNAME}", user.getFirstName());
+				}
+				if (line.contains("{LNAME}")) {
+					line = line.replace("{LNAME}", user.getLastName());
+				}
+				if (line.contains("${TEMP-PWD}")) {
+					line = line.replace("{TEMP-PWD}", user.getPassword());
+				}
+				if (line.contains("{EMAIL}")) {
+					line = line.replace("{EMAIL}", user.getEmailId());
+				}
+				sb.append(line);
+				line = br.readLine();
+			}
+			br.close();
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return sb.toString();
+	}
+
 }
